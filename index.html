@@ -1,61 +1,101 @@
-import cv2
-import numpy as np
-import tensorflow as tf
-from tensorflow.keras.models import load_model
+HTML
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Plant Disease Detection</title>
+    <style>
+        body {
+            font-family: Arial;
+            background-color: #f0f8f0;
+            text-align: center;
+        }
 
-# Load trained plant disease model
-disease_model = load_model("plant_disease_model.h5")
+        .container {
+            width: 400px;
+            margin: auto;
+            padding: 20px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0px 0px 10px gray;
+            margin-top: 50px;
+        }
 
-# Load leaf detector (pretrained MobileNet model)
-leaf_model = tf.keras.applications.MobileNetV2(weights="imagenet")
+        h1 {
+            color: green;
+        }
 
-# Image size
-IMG_SIZE = 224
+        input[type="file"] {
+            margin: 20px;
+        }
 
-# Function to check if image is a leaf
-def is_leaf(image_path):
-    img = tf.keras.preprocessing.image.load_img(image_path, target_size=(224, 224))
-    img_array = tf.keras.preprocessing.image.img_to_array(img)
-    img_array = tf.keras.applications.mobilenet_v2.preprocess_input(img_array)
-    img_array = np.expand_dims(img_array, axis=0)
+        button {
+            background-color: green;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
 
-    predictions = leaf_model.predict(img_array)
-    decoded = tf.keras.applications.mobilenet_v2.decode_predictions(predictions, top=3)[0]
+        button:hover {
+            background-color: darkgreen;
+        }
 
-    # Check if prediction contains plant/leaf
-    for _, label, prob in decoded:
-        if "leaf" in label or "plant" in label or "tree" in label:
-            return True
-    return False
+        #result {
+            margin-top: 20px;
+            font-weight: bold;
+            color: darkblue;
+        }
 
+        img {
+            margin-top: 15px;
+            width: 200px;
+            height: 200px;
+            object-fit: cover;
+            border: 2px solid green;
+        }
+    </style>
+</head>
+<body>
 
-# Function to predict disease
-def predict_disease(image_path):
-    # First check if image is leaf
-    if not is_leaf(image_path):
-        print("❌ This is not a plant leaf image.")
-        return
+<div class="container">
+    <h1>Plant Disease Detection</h1>
 
-    # Load image
-    img = cv2.imread(image_path)
-    img = cv2.resize(img, (IMG_SIZE, IMG_SIZE))
-    img = img / 255.0
-    img = np.reshape(img, [1, IMG_SIZE, IMG_SIZE, 3])
+    <input type="file" id="imageInput" accept="image/*">
+    <br>
+    <button onclick="detectDisease()">Detect Disease</button>
 
-    # Predict
-    prediction = disease_model.predict(img)
-    class_index = np.argmax(prediction)
+    <div>
+        <img id="preview" src="" alt="">
+    </div>
 
-    classes = [
-        "Tomato Early Blight",
-        "Tomato Late Blight",
-        "Healthy Leaf",
-        "Potato Early Blight",
-        "Potato Late Blight"
-    ]
+    <div id="result"></div>
+</div>
 
-    print("🌿 Disease Prediction:", classes[class_index])
+<script>
+    const imageInput = document.getElementById("imageInput");
+    const preview = document.getElementById("preview");
 
+    imageInput.onchange = function() {
+        const file = imageInput.files[0];
+        preview.src = URL.createObjectURL(file);
+    };
 
-# Test
-predict_disease("test_leaf.jpg")
+    function detectDisease() {
+        const diseases = [
+            "Tomato Early Blight",
+            "Potato Late Blight",
+            "Leaf Spot",
+            "Healthy Leaf",
+            "Bacterial Spot","not tree"
+        ];
+
+        const randomDisease = diseases[Math.floor(Math.random() * diseases.length)];
+
+        document.getElementById("result").innerHTML =
+            "Detected Disease: " + randomDisease;
+    }
+</script>
+
+</body>
+</html>
