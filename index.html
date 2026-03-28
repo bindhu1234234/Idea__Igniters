@@ -1,113 +1,94 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Plant Disease Detection</title>
-    <style>
-        body {
-            font-family: Arial;
-            background-color: #f0f8f0;
-            text-align: center;
+ /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   FarmScan AI â€” Service Worker (sw.js)
+   Caches all assets so the app works FULLY OFFLINE
+   after the first visit.
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+
+const CACHE_NAME = 'farmscan-v1';
+
+// All files we want to cache for offline use
+const ASSETS_TO_CACHE = [
+  '/',
+  '/index.html',
+  // TensorFlow.js CDN files will be cached automatically on first load
+];
+
+/* â”€â”€ Install: cache core files â”€â”€ */
+self.addEventListener('install', event => {
+  event.waitUntil(
+    caches.open(CACHE_NAME).then(cache => {
+      console.log('[SW] Caching core assets');
+      return cache.addAll(ASSETS_TO_CACHE);
+    })
+  );
+  self.skipWaiting();
+});
+
+/* â”€â”€ Activate: clean old caches â”€â”€ */
+self.addEventListener('activate', event => {
+  event.waitUntil(
+    caches.keys().then(keys =>
+      Promise.all(
+        keys
+          .filter(key => key !== CACHE_NAME)
+          .map(key => caches.delete(key))
+      )
+    )
+  );
+  self.clients.claim();
+});
+
+/* â”€â”€ Fetch: serve from cache, fall back to network â”€â”€ */
+self.addEventListener('fetch', event => {
+  event.respondWith(
+    caches.match(event.request).then(cached => {
+      if (cached) return cached;
+
+      // Not in cache â†’ fetch from network and cache it
+      return fetch(event.request).then(response => {
+        // Only cache successful GET responses
+        if (
+          !response ||
+          response.status !== 200 ||
+          response.type === 'opaque' ||
+          event.request.method !== 'GET'
+        ) {
+          return response;
         }
 
-        .container {
-            width: 400px;
-            margin: auto;
-            padding: 20px;
-            background: white;
-            border-radius: 10px;
-            box-shadow: 0px 0px 10px gray;
-            margin-top: 50px;
+        const toCache = response.clone();
+        caches.open(CACHE_NAME).then(cache => {
+          cache.put(event.request, toCache);
+        });
+        return response;
+      }).catch(() => {
+        // Network failed and not in cache
+        // Return a friendly offline page for navigation requests
+        if (event.request.mode === 'navigate') {
+          return caches.match('/index.html');
         }
-
-        h1 {
-            color: green;
-        }
-
-        input[type="file"] {
-            margin: 20px;
-        }
-
-        button {
-            background-color: green;
-            color: white;
-            padding: 10px 20px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-
-        button:hover {
-            background-color: darkgreen;
-        }
-
-        #result {
-            margin-top: 20px;
-            font-weight: bold;
-            color: darkblue;
-        }
-
-        img {
-            margin-top: 15px;
-            width: 200px;
-            height: 200px;
-            object-fit: cover;
-            border: 2px solid green;
-            display: none;
-        }
-    </style>
-</head>
-<body>
-
-<div class="container">
-    <h1>Plant Disease Detection</h1>
-
-    <input type="file" id="imageInput" accept="image/*">
-    <br>
-    <button onclick="detectDisease()">Detect Disease</button>
-
-    <div>
-        <img id="preview" src="" alt="Image Preview">
-    </div>
-
-    <div id="result"></div>
-</div>
-
-<script>
-    const imageInput = document.getElementById("imageInput");
-    const preview = document.getElementById("preview");
-    const result = document.getElementById("result");
-
-    imageInput.onchange = function() {
-        const file = imageInput.files[0];
-
-        if (file) {
-            preview.src = URL.createObjectURL(file);
-            preview.style.display = "block";
-            result.innerHTML = "";
-        }
-    };
-
-    function detectDisease() {
-        const file = imageInput.files[0];
-
-        if (!file) {
-            result.innerHTML = "⚠️ Please upload an image first!";
-            return;
-        }
-
-        const diseases = [
-            "Tomato Early Blight",
-            "Potato Late Blight",
-            "Leaf Spot",
-            "Healthy Leaf",
-            "Bacterial Spot"
-        ];
-
-        const randomDisease = diseases[Math.floor(Math.random() * diseases.length)];
-
-        result.innerHTML = "Detected Disease: " + randomDisease;
+      });
+    })
+  );
+});
+{
+  "name": "FarmScan AI – Crop Disease Detector",
+  "short_name": "FarmScan",
+  "description": "Detect crop diseases instantly using AI. Works offline. English & Telugu.",
+  "start_url": "/index.html",
+  "display": "standalone",
+  "background_color": "#1a5e20",
+  "theme_color": "#2e7d32",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌱</text></svg>",
+      "sizes": "192x192",
+      "type": "image/svg+xml"
     }
-</script>
+  ]
+}
+       
 
-</body>
-</html>
+
+
