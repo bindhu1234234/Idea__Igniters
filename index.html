@@ -77,7 +77,7 @@ HTML
     const preview = document.getElementById("preview");
 
     imageInput.onchange = function() {
-        const file = imageInput.files[0];
+        const file = plantimageInput.files[0];
         preview.src = URL.createObjectURL(file);
     };
 
