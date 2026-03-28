@@ -1,101 +1,47 @@
-HTML
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Plant Disease Detection</title>
-    <style>
-        body {
-            font-family: Arial;
-            background-color: #f0f8f0;
-            text-align: center;
-        }
+from flask import Flask, render_template, request
+import torch
+from torchvision import transforms
+from PIL import Image
+import os
 
-        .container {
-            width: 400px;
-            margin: auto;
-            padding: 20px;
-            background: white;
-            border-radius: 10px;
-            box-shadow: 0px 0px 10px gray;
-            margin-top: 50px;
-        }
+app = Flask(__name__)
+UPLOAD_FOLDER = 'static/uploads'
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
-        h1 {
-            color: green;
-        }
+# Load your trained model
+model = torch.load('model.pth', map_location='cpu')
+model.eval()
 
-        input[type="file"] {
-            margin: 20px;
-        }
+classes = ['Healthy', 'Leaf Spot', 'Rice Blast']
 
-        button {
-            background-color: green;
-            color: white;
-            padding: 10px 20px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-        }
+transform = transforms.Compose([
+    transforms.Resize((224, 224)),
+    transforms.ToTensor()
+])
 
-        button:hover {
-            background-color: darkgreen;
-        }
+@app.route('/', methods=['GET', 'POST'])
+def index():
+    if request.method == 'POST':
+        file = request.files['image']
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
+        file.save(filepath)
 
-        #result {
-            margin-top: 20px;
-            font-weight: bold;
-            color: darkblue;
-        }
+        # Process image
+        img = Image.open(filepath)
+        img = transform(img).unsqueeze(0)
 
-        img {
-            margin-top: 15px;
-            width: 200px;
-            height: 200px;
-            object-fit: cover;
-            border: 2px solid green;
-        }
-    </style>
-</head>
-<body>
+        with torch.no_grad():
+            output = model(img)
+            prob = torch.nn.functional.softmax(output[0], dim=0)
+            pred = classes[prob.argmax().item()]
+            confidence = prob.max().item()
 
-<div class="container">
-    <h1>Plant Disease Detection</h1>
+        return render_template('index.html',
+                               prediction=pred,
+                               confidence=round(confidence*100, 2),
+                               image=filepath)
 
-    <input type="file" id="imageInput" accept="image/*">
-    <br>
-    <button onclick="detectDisease()">Detect Disease</button>
+    return render_template('index.html')
 
-    <div>
-        <img id="preview" src="" alt="">
-    </div>
-
-    <div id="result"></div>
-</div>
-
-<script>
-    const imageInput = document.getElementById("imageInput");
-    const preview = document.getElementById("preview");
-
-    imageInput.onchange = function() {
-        const file = plantimageInput.files[0];
-        preview.src = URL.createObjectURL(file);
-    };
-
-    function detectDisease() {
-        const diseases = [
-            "Tomato Early Blight",
-            "Potato Late Blight",
-            "Leaf Spot",
-            "Healthy Leaf",
-            "Bacterial Spot","not tree"
-        ];
-
-        const randomDisease = diseases[Math.floor(Math.random() * diseases.length)];
-
-        document.getElementById("result").innerHTML =
-            "Detected Disease: " + randomDisease;
-    }
-</script>
-
-</body>
-</html>
+if __name__ == '__main__':
+    app.run(debug=True)
