@@ -16,6 +16,9 @@ img_array = np.expand_dims(img_array, axis=0)
 
 # Prediction
 prediction = model.predict(img_array)
-result = classes[np.argmax(prediction)]
+result = classes[np.argmax(prediction)]git branch -m main mai
+git fetch origin
+git branch -u origin/mai mai
+git remote set-head origin -a
 
 print("Detected Disease:", result)
