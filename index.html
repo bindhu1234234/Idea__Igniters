@@ -1,24 +1,58 @@
-import tensorflow as tf
-import numpy as np
-from tensorflow.keras.preprocessing import image
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Plant Disease Detection</title>
+    <style>
+        body {
+            font-family: Arial;
+            text-align: center;
+            background-color: #eafaf1;
+        }
+        h1 {
+            color: green;
+        }
+        .box {
+            margin-top: 50px;
+            padding: 20px;
+            border: 2px solid green;
+            display: inline-block;
+            border-radius: 10px;
+            background-color: white;
+        }
+        input[type="file"] {
+            margin: 10px;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: green;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+        img {
+            margin-top: 20px;
+            max-width: 200px;
+        }
+    </style>
+</head>
+<body>
 
-# Load model
-model = tf.keras.models.load_model("model.h5")
+    <h1>🌱 Plant Disease Detection</h1>
 
-# Class labels (must match training folders)
-classes = ['Tomato_Healthy', 'Tomato_Blight', 'Potato_Early_Blight', 'Corn_Rust']
+    <div class="box">
+        <form action="/predict" method="post" enctype="multipart/form-data">
+            <input type="file" name="file" required><br>
+            <button type="submit">Detect Disease</button>
+        </form>
 
-# Load image
-img_path = "test.jpg"
-img = image.load_img(img_path, target_size=(128, 128))
-img_array = image.img_to_array(img) / 255.0
-img_array = np.expand_dims(img_array, axis=0)
+        {% if result %}
+            <h2>Result: {{ result }}</h2>
+        {% endif %}
 
-# Prediction
-prediction = model.predict(img_array)
-result = classes[np.argmax(prediction)]git branch -m main mai
-git fetch origin
-git branch -u origin/mai mai
-git remote set-head origin -a
+        {% if image_path %}
+            <img src="{{ image_path }}" alt="Uploaded Image">
+        {% endif %}
+    </div>
 
-print("Detected Disease:", result)
+</body>
+</html>
