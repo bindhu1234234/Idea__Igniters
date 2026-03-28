@@ -1,64 +1,63 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Plant Disease Detector</title>
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet"></script>
-</head>
+import tensorflow as tf
+from tensorflow.keras import layers, models
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
 
-<body>
+# 1. Setup Hyperparameters
+BATCH_SIZE = 32
+IMG_SIZE = (224, 224)
+EPOCHS = 10 # Adjust based on time remaining!
+DATASET_PATH = 'path/to/your/plant_dataset' 
 
-<h2> Plant Disease Detection</h2>
+# 2. Data Augmentation (Crucial for small hackathon datasets)
+train_datagen = ImageDataGenerator(
+    rescale=1./255,
+    rotation_range=20,
+    zoom_range=0.2,
+    horizontal_flip=True,
+    validation_split=0.2
+)
 
-<input type="file" id="imageUpload" accept="image/*">
-<br><br>
+train_generator = train_datagen.flow_from_directory(
+    DATASET_PATH,
+    target_size=IMG_SIZE,
+    batch_size=BATCH_SIZE,
+    class_mode='categorical',
+    subset='training'
+)
 
-<img id="preview" width="250"/>
-<p id="result"></p>
+validation_generator = train_datagen.flow_from_directory(
+    DATASET_PATH,
+    target_size=IMG_SIZE,
+    batch_size=BATCH_SIZE,
+    class_mode='categorical',
+    subset='validation'
+)
 
-<script>
-let model;
+# 3. Build the Model (Using MobileNetV2 for speed)
+base_model = tf.keras.applications.MobileNetV2(
+    input_shape=(224, 224, 3),
+    include_top=False,
+    weights='imagenet'
+)
+base_model.trainable = False # Freeze the pre-trained weights
 
-// Load MobileNet model
-async function loadModel() {
-    model = await mobilenet.load();
-    console.log("Model Loaded");
-}
-loadModel();
+model = models.Sequential([
+    base_model,
+    layers.GlobalAveragePooling2D(),
+    layers.Dropout(0.2),
+    layers.Dense(train_generator.num_classes, activation='softmax')
+])
 
-document.getElementById("imageUpload").addEventListener("change", function(event) {
-    const file = event.target.files[0];
-    const img = document.getElementById("preview");
+model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
 
-    img.src = URL.createObjectURL(file);
+# 4. Training
+print("Starting training...")
+history = model.fit(
+    train_generator,
+    validation_data=validation_generator,
+    epochs=EPOCHS
+)
 
-    img.onload = async function() {
-        const predictions = await model.classify(img);
-
-        console.log(predictions);
-
-        // Check if it's a plant
-        let isPlant = false;
-
-        predictions.forEach(p => {
-            if (p.className.toLowerCase().includes("plant") ||
-                p.className.toLowerCase().includes("leaf") ||
-                p.className.toLowerCase().includes("tree") ||
-                p.className.toLowerCase().includes("flower")) {
-                isPlant = true;
-            }
-        });
-
-        if (!isPlant) {
-            document.getElementById("result").innerHTML 
-        } else {
-            // Dummy disease logic (replace with real model later)
-            document.getElementById("result").innerHTML =
-                " Plant detected<br>Possible status: Healthy or Diseased (need trained model)";
-        }
-    };
-});
-</script>
-
-</body>
-</html>
+# 5. Save the model for your demo app
+model.save('plant_disease_model.h5')
+print("Model saved as plant_disease_model.h5")
