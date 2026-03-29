@@ -1,48 +1,20 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Plant Disease Detection</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
 
-       import tensorflow as tf
-from tensorflow.keras.preprocessing.image import ImageDataGenerator
+<div class="container">
+    <h1>🌱 Plant Disease Detection</h1>
 
-# Image preprocessing
-train_datagen = ImageDataGenerator(rescale=1./255)
-val_datagen = ImageDataGenerator(rescale=1./255)
+    <form action="/predict" method="post" enctype="multipart/form-data">
+        <input type="file" name="file" required>
+        <br><br>
+        <button type="submit">Predict</button>
+    </form>
+</div>
 
-train_data = train_datagen.flow_from_directory(
-    "dataset_plant/train",
-    target_size=(224, 224),
-    batch_size=32,
-    class_mode='categorical'
-)
-
-val_data = val_datagen.flow_from_directory(
-    "dataset_plant/validation",
-    target_size=(224, 224),
-    batch_size=32,
-    class_mode='categorical'
-)
-
-# Model (MobileNet for better accuracy)
-base_model = tf.keras.applications.MobileNetV2(
-    input_shape=(224, 224, 3),
-    include_top=False,
-    weights='imagenet'
-)
-
-base_model.trainable = False
-
-model = tf.keras.Sequential([
-    base_model,
-    tf.keras.layers.GlobalAveragePooling2D(),
-    tf.keras.layers.Dense(2, activation='softmax')
-])
-
-model.compile(
-    optimizer='adam',
-    loss='categorical_crossentropy',
-    metrics=['accuracy']
-)
-
-# Train
-model.fit(train_data, validation_data=val_data, epochs=5)
-
-# Save model
-model.save("plant_vs_nonplant.h5")
+</body>
+</html>
