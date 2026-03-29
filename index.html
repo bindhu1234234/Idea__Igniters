@@ -1,140 +1,47 @@
-
 import tensorflow as tf
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
-from tensorflow.keras.preprocessing import image
-import numpy as np
-import os
 
-# =========================
-# 1. DATA GENERATORS
-# =========================
-
-train_datagen = ImageDataGenerator(
-    rescale=1./255,
-    rotation_range=20,
-    zoom_range=0.2,
-    horizontal_flip=True
-)
-
+# Image preprocessing
+train_datagen = ImageDataGenerator(rescale=1./255)
 val_datagen = ImageDataGenerator(rescale=1./255)
 
-# =========================
-# 2. LOAD DATASETS
-# =========================
-
-# 👉 CHANGE THESE PATHS
-plant_train_dir = "dataset_plant/train"
-plant_val_dir = "dataset_plant/validation"
-
-disease_train_dir = "dataset_disease/train"
-disease_val_dir = "dataset_disease/validation"
-
-# Plant vs Non-Plant
-plant_train = train_datagen.flow_from_directory(
-    plant_train_dir,
+train_data = train_datagen.flow_from_directory(
+    "dataset_plant/train",
     target_size=(224, 224),
     batch_size=32,
     class_mode='categorical'
 )
 
-plant_val = val_datagen.flow_from_directory(
-    plant_val_dir,
+val_data = val_datagen.flow_from_directory(
+    "dataset_plant/validation",
     target_size=(224, 224),
     batch_size=32,
     class_mode='categorical'
 )
 
-# Disease Dataset
-disease_train = train_datagen.flow_from_directory(
-    disease_train_dir,
-    target_size=(224, 224),
-    batch_size=32,
-    class_mode='categorical'
+# Model (MobileNet for better accuracy)
+base_model = tf.keras.applications.MobileNetV2(
+    input_shape=(224, 224, 3),
+    include_top=False,
+    weights='imagenet'
 )
 
-disease_val = val_datagen.flow_from_directory(
-    disease_val_dir,
-    target_size=(224, 224),
-    batch_size=32,
-    class_mode='categorical'
+base_model.trainable = False
+
+model = tf.keras.Sequential([
+    base_model,
+    tf.keras.layers.GlobalAveragePooling2D(),
+    tf.keras.layers.Dense(2, activation='softmax')
+])
+
+model.compile(
+    optimizer='adam',
+    loss='categorical_crossentropy',
+    metrics=['accuracy']
 )
 
-# =========================
-# 3. BUILD MODEL FUNCTION
-# =========================
+# Train
+model.fit(train_data, validation_data=val_data, epochs=5)
 
-def create_model(num_classes):
-    base_model = tf.keras.applications.MobileNetV2(
-        input_shape=(224, 224, 3),
-        include_top=False,
-        weights='imagenet'
-    )
-    base_model.trainable = False
-
-    model = tf.keras.Sequential([
-        base_model,
-        tf.keras.layers.GlobalAveragePooling2D(),
-        tf.keras.layers.Dense(num_classes, activation='softmax')
-    ])
-
-    model.compile(
-        optimizer='adam',
-        loss='categorical_crossentropy',
-        metrics=['accuracy']
-    )
-    return model
-
-# =========================
-# 4. TRAIN MODELS
-# =========================
-
-# Train Plant Model
-plant_model = create_model(2)
-plant_model.fit(plant_train, validation_data=plant_val, epochs=5)
-plant_model.save("plant_vs_nonplant.h5")
-
-# Train Disease Model
-disease_model = create_model(disease_train.num_classes)
-disease_model.fit(disease_train, validation_data=disease_val, epochs=5)
-disease_model.save("plant_disease_model.h5")
-
-# =========================
-# 5. LOAD MODELS (FOR PREDICTION)
-# =========================
-
-plant_model = tf.keras.models.load_model("plant_vs_nonplant.h5")
-disease_model = tf.keras.models.load_model("plant_disease_model.h5")
-
-plant_classes = list(plant_train.class_indices.keys())
-disease_classes = list(disease_train.class_indices.keys())
-
-# =========================
-# 6. PREDICTION FUNCTION
-# =========================
-
-def predict_image(img_path):
-    img = image.load_img(img_path, target_size=(224, 224))
-    img_array = image.img_to_array(img) / 255.0
-    img_array = np.expand_dims(img_array, axis=0)
-
-    # Step 1: Plant or not
-    plant_pred = plant_model.predict(img_array)
-    plant_label = plant_classes[np.argmax(plant_pred)]
-
-    if plant_label != "plant":
-        print("❌ Sorry, this is not a plant")
-        return
-
-    # Step 2: Disease detection
-    disease_pred = disease_model.predict(img_array)
-    disease_label = disease_classes[np.argmax(disease_pred)]
-
-    print("🌱 Plant detected")
-    print("🦠 Disease:", disease_label)
-
-# =========================
-# 7. TEST
-# =========================
-
-# 👉 Put your test image path here
-predict_image("test_image.jpg")
+# Save model
+model.save("plant_vs_nonplant.h5")
