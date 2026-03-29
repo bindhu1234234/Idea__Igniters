@@ -1,65 +1,32 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Plant Disease Detector</title>
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet"></script>
-</head>
+import tensorflow as tf
+from tensorflow.keras.preprocessing import image
+import numpy as np
 
-<body>
+# Load models
+plant_model = tf.keras.models.load_model("plant_vs_nonplant.h5")
+disease_model = tf.keras.models.load_model("plant_disease_model.h5")
 
-<h2>🌱 Plant Disease Detection</h2>
+# Class labels
+plant_classes = ["non_plant", "plant"]
+disease_classes = ["Healthy", "Leaf Spot", "Rust", "Blight"]
 
-<input type="file" id="imageUpload" accept="image/*">
-<br><br>
+def predict_image(img_path):
+    img = image.load_img(img_path, target_size=(224, 224))
+    img_array = image.img_to_array(img)
+    img_array = np.expand_dims(img_array, axis=0) / 255.0
 
-<img id="preview" width="250"/>
-<p id="result"></p>
+    # Step 1: Check plant or not
+    plant_pred = plant_model.predict(img_array)
+    plant_label = plant_classes[np.argmax(plant_pred)]
 
-<script>
-let model;
+    if plant_label == "non_plant":
+        print("Sorry, this is not a plant ❌")
+    else:
+        # Step 2: Disease detection
+        disease_pred = disease_model.predict(img_array)
+        disease_label = disease_classes[np.argmax(disease_pred)]
+        print(f"Plant detected 🌱")
+        print(f"Disease: {disease_label}")
 
-// Load MobileNet model
-async function loadModel() {
-    model = await mobilenet.load();
-    console.log("Model Loaded");
-}
-loadModel();
-
-document.getElementById("imageUpload").addEventListener("change", function(event) {
-    const file = event.target.files[0];
-    const img = document.getElementById("preview");
-
-    img.src = URL.createObjectURL(file);
-
-    img.onload = async function() {
-        const predictions = await model.classify(img);
-
-        console.log(predictions);
-
-        // Check if it's a plant
-        let isPlant = false;
-
-        predictions.forEach(p => {
-            if (p.className.toLowerCase().includes("plant") ||
-                p.className.toLowerCase().includes("leaf") ||
-                p.className.toLowerCase().includes("tree") ||
-                p.className.toLowerCase().includes("flower")) {
-                isPlant = true;
-            }
-        });
-
-        if (!isPlant) {
-            document.getElementById("result").innerHTML =
-                "❌ This is NOT a plant";
-        } else {
-            // Dummy disease logic (replace with real model later)
-            document.getElementById("result").innerHTML =
-                "🌿 Plant detected<br>Possible status: Healthy or Diseased (need trained model)";
-        }
-    };
-});
-</script>
-
-</body>
-</html>
+# Test
+predict_image("test_image.jpg")
