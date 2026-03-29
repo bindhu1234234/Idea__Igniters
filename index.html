@@ -1,79 +1,127 @@
+
 import tensorflow as tf
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.preprocessing import image
 import numpy as np
 
-# Load models
-plant_model = tf.keras.models.load_model("plant_vs_nonplant.h5")
-disease_model = tf.keras.models.load_model("plant_disease_model.h5")
+# =====================
+# 1. DATA GENERATOR
+# =====================
 
-# Class labels
-plant_classes = ["non_plant", "plant"]
-disease_classes = ["Healthy", "Leaf Spot", "Rust", "Blight"]
+train_datagen = ImageDataGenerator(
+    rescale=1./255,
+    rotation_range=20,
+    zoom_range=0.2,
+    horizontal_flip=True
+)
 
-def predict_image(img_path):
-    img = image.load_img(img_path, target_size=(224, 224))
-    img_array = image.img_to_array(img)
-    img_array = np.expand_dims(img_array, axis=0) / 255.0
-
-    # Step 1: Check plant or not
-    plant_pred = plant_model.predict(img_array)
-    plant_label = plant_classes[np.argmax(plant_pred)]
-
-    if plant_label == "non_plant":
-        print("Sorry, this is not a plant ❌")
-    else:
-        # Step 2: Disease detection
-        disease_pred = disease_model.predict(img_array)
-        disease_label = disease_classes[np.argmax(disease_pred)]
-        print(f"Plant detected 🌱")
-        print(f"Disease: {disease_label}")
-
-# Test
-predict_image("test_image.jpg")
-import tensorflow as tf
-from tensorflow.keras.preprocessing.image import ImageDataGenerator
-
-# Image preprocessing
-train_datagen = ImageDataGenerator(rescale=1./255)
 val_datagen = ImageDataGenerator(rescale=1./255)
 
-train_data = train_datagen.flow_from_directory(
+# =====================
+# 2. LOAD DATA
+# =====================
+
+plant_train = train_datagen.flow_from_directory(
     "dataset_plant/train",
     target_size=(224, 224),
     batch_size=32,
     class_mode='categorical'
 )
 
-val_data = val_datagen.flow_from_directory(
+plant_val = val_datagen.flow_from_directory(
     "dataset_plant/validation",
     target_size=(224, 224),
     batch_size=32,
     class_mode='categorical'
 )
 
-# Model (MobileNet for better accuracy)
-base_model = tf.keras.applications.MobileNetV2(
-    input_shape=(224, 224, 3),
-    include_top=False,
-    weights='imagenet'
+disease_train = train_datagen.flow_from_directory(
+    "dataset_disease/train",
+    target_size=(224, 224),
+    batch_size=32,
+    class_mode='categorical'
 )
 
-base_model.trainable = False
-
-model = tf.keras.Sequential([
-    base_model,
-    tf.keras.layers.GlobalAveragePooling2D(),
-    tf.keras.layers.Dense(2, activation='softmax')
-])
-
-model.compile(
-    optimizer='adam',
-    loss='categorical_crossentropy',
-    metrics=['accuracy']
+disease_val = val_datagen.flow_from_directory(
+    "dataset_disease/validation",
+    target_size=(224, 224),
+    batch_size=32,
+    class_mode='categorical'
 )
 
-# Train
-model.fit(train_data, validation_data=val_data, epochs=5)
+# =====================
+# 3. MODEL FUNCTION
+# =====================
 
-# Save model
-model.save("plant_vs_nonplant.h5")
+def create_model(classes):
+    base_model = tf.keras.applications.MobileNetV2(
+        input_shape=(224, 224, 3),
+        include_top=False,
+        weights='imagenet'
+    )
+    base_model.trainable = False
+
+    model = tf.keras.Sequential([
+        base_model,
+        tf.keras.layers.GlobalAveragePooling2D(),
+        tf.keras.layers.Dense(classes, activation='softmax')
+    ])
+
+    model.compile(optimizer='adam',
+                  loss='categorical_crossentropy',
+                  metrics=['accuracy'])
+    return model
+
+# =====================
+# 4. TRAIN MODELS
+# =====================
+
+# Plant vs Non-Plant
+plant_model = create_model(2)
+plant_model.fit(plant_train, validation_data=plant_val, epochs=5)
+plant_model.save("plant_vs_nonplant.h5")
+
+# Disease Model
+disease_model = create_model(disease_train.num_classes)
+disease_model.fit(disease_train, validation_data=disease_val, epochs=5)
+disease_model.save("plant_disease_model.h5")
+
+# =====================
+# 5. LOAD MODELS
+# =====================
+
+plant_model = tf.keras.models.load_model("plant_vs_nonplant.h5")
+disease_model = tf.keras.models.load_model("plant_disease_model.h5")
+
+plant_classes = list(plant_train.class_indices.keys())
+disease_classes = list(disease_train.class_indices.keys())
+
+# =====================
+# 6. PREDICTION
+# =====================
+
+def predict_image(img_path):
+    img = image.load_img(img_path, target_size=(224, 224))
+    img = image.img_to_array(img) / 255.0
+    img = np.expand_dims(img, axis=0)
+
+    # Step 1: Check plant
+    plant_pred = plant_model.predict(img)
+    plant_label = plant_classes[np.argmax(plant_pred)]
+
+    if plant_label != "plant":
+        print("❌ Sorry, this is not a plant")
+        return
+
+    # Step 2: Disease detection
+    disease_pred = disease_model.predict(img)
+    disease_label = disease_classes[np.argmax(disease_pred)]
+
+    print("🌱 Plant detected")
+    print("🦠 Disease:", disease_label)
+
+# =====================
+# 7. TEST IMAGE
+# =====================
+
+predict_image("test_image.jpg")
