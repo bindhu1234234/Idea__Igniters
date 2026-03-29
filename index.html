@@ -1,73 +1,119 @@
-HTML
 <!DOCTYPE html>
 <html>
 <head>
     <title>Plant Disease Detection</title>
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.5.0/dist/tf.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@3.1.0/dist/mobilenet.min.js"></script>
+
+    <!-- TensorFlow + Teachable Machine -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest"></script>
+
     <style>
-        body { font-family: Arial; text-align: center; background: #e8f5e9; }
-        .container { margin-top: 50px; padding: 20px; background: white; width: 450px; margin: auto; border-radius: 10px; box-shadow: 0 0 10px gray; }
-        img { margin-top: 15px; width: 300px; height: auto; }
-        button { padding: 10px 20px; background: green; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        body {
+            font-family: Arial;
+            background-color: #f0f8f0;
+            text-align: center;
+        }
+
+        .container {
+            width: 400px;
+            margin: auto;
+            padding: 20px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0px 0px 10px gray;
+            margin-top: 50px;
+        }
+
+        h1 { color: green; }
+
+        button {
+            background-color: green;
+            color: white;
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        #result {
+            margin-top: 20px;
+            font-weight: bold;
+            font-size: 18px;
+            color: darkblue;
+        }
+
+        img {
+            margin-top: 15px;
+            width: 200px;
+            height: 200px;
+            display: none;
+            border: 2px solid green;
+        }
     </style>
 </head>
+
 <body>
 
 <div class="container">
-    <h2>Plant Disease Detection</h2>
-    <input type="file" id="imageUpload" accept="image/*"><br><br>
-    <button onclick="detectPlant()">Detect Disease</button>
-    <p id="result"></p>
-    <img id="preview" />
+    <h1>🌿 Plant Disease Detection</h1>
+
+    <input type="file" id="imageInput" accept="image/*"><br><br>
+    <button onclick="predict()">Detect Disease</button>
+
+    <div>
+        <img id="preview">
+    </div>
+
+    <div id="result">Result will appear here...</div>
 </div>
 
 <script>
 let model;
 
-// Load MobileNet model
+// 🔹 Load your trained model
 async function loadModel() {
-    model = await mobilenet.load();
+    const URL = "model/";  // folder in GitHub
+    model = await tmImage.load(URL + "model.json", URL + "metadata.json");
 }
 loadModel();
 
-async function detectPlant() {
-    const fileInput = document.getElementById('imageUpload');
-    const result = document.getElementById('result');
-    const preview = document.getElementById('preview');
+// 🔹 Show preview
+const imageInput = document.getElementById("imageInput");
+const preview = document.getElementById("preview");
 
-    if (fileInput.files.length === 0) {
-        result.innerText = "Please upload an image.";
+imageInput.onchange = function() {
+    const file = imageInput.files[0];
+    if (file) {
+        preview.src = URL.createObjectURL(file);
+        preview.style.display = "block";
+    }
+};
+
+// 🔹 Predict disease
+async function predict() {
+    if (!model) {
+        document.getElementById("result").innerHTML = "⏳ Model loading...";
         return;
     }
 
-    const file = fileInput.files[0];
-    const reader = new FileReader();
+    if (!preview.src) {
+        document.getElementById("result").innerHTML = "⚠️ Upload an image!";
+        return;
+    }
 
-    reader.onload = async function(e) {
-        preview.src = e.target.result;
+    const prediction = await model.predict(preview);
 
-        // Wait for the image to load
-        preview.onload = async function() {
-            const predictions = await model.classify(preview);
-            console.log(predictions);
+    let highest = prediction[0];
 
-            // Check if top prediction contains 'plant' or 'leaf'
-            const isPlant = predictions.some(pred => 
-                pred.className.toLowerCase().includes("plant") || 
-                pred.className.toLowerCase().includes("leaf")
-            );
+    for (let i = 1; i < prediction.length; i++) {
+        if (prediction[i].probability > highest.probability) {
+            highest = prediction[i];
+        }
+    }
 
-            if (isPlant) {
-                // Mock disease detection (replace with your model)
-                result.innerText = "Plant detected! Disease: Leaf Spot (example)";
-            } else {
-                result.innerText = "Error: Please upload only plant or leaf images.";
-            }
-        };
-    };
-
-    reader.readAsDataURL(file);
+    document.getElementById("result").innerHTML =
+        "🌱 Detected Disease: " + highest.className +
+        "<br>📊 Accuracy: " + (highest.probability * 100).toFixed(2) + "%";
 }
 </script>
 
