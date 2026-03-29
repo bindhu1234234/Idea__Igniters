@@ -1,47 +1,32 @@
 import tensorflow as tf
-from tensorflow.keras.preprocessing.image import ImageDataGenerator
+from tensorflow.keras.preprocessing import image
+import numpy as np
 
-# Image preprocessing
-train_datagen = ImageDataGenerator(rescale=1./255)
-val_datagen = ImageDataGenerator(rescale=1./255)
+# Load models
+plant_model = tf.keras.models.load_model("plant_vs_nonplant.h5")
+disease_model = tf.keras.models.load_model("plant_disease_model.h5")
 
-train_data = train_datagen.flow_from_directory(
-    "dataset_plant/train",
-    target_size=(224, 224),
-    batch_size=32,
-    class_mode='categorical'
-)
+# Class labels
+plant_classes = ["non_plant", "plant"]
+disease_classes = ["Healthy", "Leaf Spot", "Rust", "Blight"]
 
-val_data = val_datagen.flow_from_directory(
-    "dataset_plant/validation",
-    target_size=(224, 224),
-    batch_size=32,
-    class_mode='categorical'
-)
+def predict_image(img_path):
+    img = image.load_img(img_path, target_size=(224, 224))
+    img_array = image.img_to_array(img)
+    img_array = np.expand_dims(img_array, axis=0) / 255.0
 
-# Model (MobileNet for better accuracy)
-base_model = tf.keras.applications.MobileNetV2(
-    input_shape=(224, 224, 3),
-    include_top=False,
-    weights='imagenet'
-)
+    # Step 1: Check plant or not
+    plant_pred = plant_model.predict(img_array)
+    plant_label = plant_classes[np.argmax(plant_pred)]
 
-base_model.trainable = False
+    if plant_label == "non_plant":
+        print("Sorry, this is not a plant ❌")
+    else:
+        # Step 2: Disease detection
+        disease_pred = disease_model.predict(img_array)
+        disease_label = disease_classes[np.argmax(disease_pred)]
+        print(f"Plant detected 🌱")
+        print(f"Disease: {disease_label}")
 
-model = tf.keras.Sequential([
-    base_model,
-    tf.keras.layers.GlobalAveragePooling2D(),
-    tf.keras.layers.Dense(2, activation='softmax')
-])
-
-model.compile(
-    optimizer='adam',
-    loss='categorical_crossentropy',
-    metrics=['accuracy']
-)
-
-# Train
-model.fit(train_data, validation_data=val_data, epochs=5)
-
-# Save model
-model.save("plant_vs_nonplant.h5")
+# Test
+predict_image("test_image.jpg")
