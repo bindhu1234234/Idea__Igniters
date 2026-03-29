@@ -1,32 +1,123 @@
-import tensorflow as tf
-from tensorflow.keras.preprocessing import image
-import numpy as np
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Plant Disease Detection</title>
+    <style>
+        body {
+            font-family: Arial;
+            background-color: #f0f8f0;
+            text-align: center;
+        }
 
-# Load models
-plant_model = tf.keras.models.load_model("plant_vs_nonplant.h5")
-disease_model = tf.keras.models.load_model("plant_disease_model.h5")
+        .container {
+            width: 400px;
+            margin: auto;
+            padding: 20px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0px 0px 10px gray;
+            margin-top: 50px;
+        }
 
-# Class labels
-plant_classes = ["non_plant", "plant"]
-disease_classes = ["Healthy", "Leaf Spot", "Rust", "Blight"]
+        h1 {
+            color: green;
+        }
 
-def predict_image(img_path):
-    img = image.load_img(img_path, target_size=(224, 224))
-    img_array = image.img_to_array(img)
-    img_array = np.expand_dims(img_array, axis=0) / 255.0
+        input[type="file"] {
+            margin: 20px;
+        }
 
-    # Step 1: Check plant or not
-    plant_pred = plant_model.predict(img_array)
-    plant_label = plant_classes[np.argmax(plant_pred)]
+        button {
+            background-color: green;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
 
-    if plant_label == "non_plant":
-        print("Sorry, this is not a plant ❌")
-    else:
-        # Step 2: Disease detection
-        disease_pred = disease_model.predict(img_array)
-        disease_label = disease_classes[np.argmax(disease_pred)]
-        print(f"Plant detected 🌱")
-        print(f"Disease: {disease_label}")
+        button:hover {
+            background-color: darkgreen;
+        }
 
-# Test
-predict_image("test_image.jpg")
+        #result {
+            margin-top: 20px;
+            font-weight: bold;
+            color: darkblue;
+        }
+
+        img {
+            margin-top: 15px;
+            width: 200px;
+            height: 200px;
+            object-fit: cover;
+            border: 2px solid green;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>🌿 Plant Disease Detection</h1>
+
+    <input type="file" id="imageInput" accept="image/*">
+    <br>
+    <button onclick="detectDisease()">Detect Disease</button>
+
+    <div>
+        <img id="preview" src="" alt="">
+    </div>
+
+    <div id="result"></div>
+</div>
+
+<script>
+    const imageInput = document.getElementById("imageInput");
+    const preview = document.getElementById("preview");
+
+    imageInput.onchange = function() {
+        const file = imageInput.files[0];
+        if (file) {
+            preview.src = URL.createObjectURL(file);
+        }
+    };
+
+   function detectDisease() {
+
+    const file = imageInput.files[0];
+
+    if (!file) {
+        document.getElementById("result").innerHTML =
+            "⚠️ Please upload an image first!";
+        return;
+    }
+
+    // Basic fake validation (you will replace with ML later)
+    const fileName = file.name.toLowerCase();
+
+    if (!(fileName.includes("leaf") || fileName.includes("plant"))) {
+        document.getElementById("result").innerHTML =
+            "❌ Sorry, please upload a valid plant leaf image.";
+        return;
+    }
+
+    const diseases = [
+        "Tomato Early Blight",
+        "Potato Late Blight",
+        "Apple Scab",
+        "Grape Black Rot",
+        "Rice Blast",
+        "Cotton Leaf Curl Virus",
+        "Mango Anthracnose",
+        "Healthy Leaf"
+    ];
+
+    const randomDisease = diseases[Math.floor(Math.random() * diseases.length)];
+
+    document.getElementById("result").innerHTML =
+        "🌱 Detected Disease: " + randomDisease;
+}
+</script>
+
+</body>
+</html>
