@@ -1,169 +1,75 @@
+HTML
 <!DOCTYPE html>
 <html>
 <head>
     <title>Plant Disease Detection</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.5.0/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@3.1.0/dist/mobilenet.min.js"></script>
     <style>
-        body {
-            font-family: Arial;
-            background-color: #f0f8f0;
-            text-align: center;
-        }
-
-        .container {
-            width: 400px;
-            margin: auto;
-            padding: 20px;
-            background: white;
-            border-radius: 10px;
-            box-shadow: 0px 0px 10px gray;
-            margin-top: 50px;
-        }
-
-        h1 {
-            color: green;
-        }
-
-        input[type="file"] {
-            margin: 20px;
-        }
-
-        button {
-            background-color: green;
-            color: white;
-            padding: 10px 20px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-
-        button:hover {
-            background-color: darkgreen;
-        }
-
-        #result {
-            margin-top: 20px;
-            font-weight: bold;
-            color: darkblue;
-        }
-
-        img {
-            margin-top: 15px;
-            width: 200px;
-            height: 200px;
-            object-fit: cover;
-            border: 2px solid green;
-        }
+        body { font-family: Arial; text-align: center; background: #e8f5e9; }
+        .container { margin-top: 50px; padding: 20px; background: white; width: 450px; margin: auto; border-radius: 10px; box-shadow: 0 0 10px gray; }
+        img { margin-top: 15px; width: 300px; height: auto; }
+        button { padding: 10px 20px; background: green; color: white; border: none; border-radius: 5px; cursor: pointer; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>🌿 Plant Disease Detection</h1>
-
-    <input type="file" id="imageInput" accept="image/*">
-    <br>
-    <button onclick="detectDisease()">Detect Disease</button>
-
-    <div>
-        <img id="preview" src="" alt="">
-    </div>
-
-    <div id="result"></div>
+    <h2>Plant Disease Detection</h2>
+    <input type="file" id="imageUpload" accept="image/*"><br><br>
+    <button onclick="detectPlant()">Detect Disease</button>
+    <p id="result"></p>
+    <img id="preview" />
 </div>
 
 <script>
-    const imageInput = document.getElementById("imageInput");
-    const preview = document.getElementById("preview");
+let model;
 
-    imageInput.onchange = function() {
-        const file = imageInput.files[0];
-        if (file) {
-            preview.src = URL.createObjectURL(file);
-        }
+// Load MobileNet model
+async function loadModel() {
+    model = await mobilenet.load();
+}
+loadModel();
+
+async function detectPlant() {
+    const fileInput = document.getElementById('imageUpload');
+    const result = document.getElementById('result');
+    const preview = document.getElementById('preview');
+
+    if (fileInput.files.length === 0) {
+        result.innerText = "Please upload an image.";
+        return;
+    }
+
+    const file = fileInput.files[0];
+    const reader = new FileReader();
+
+    reader.onload = async function(e) {
+        preview.src = e.target.result;
+
+        // Wait for the image to load
+        preview.onload = async function() {
+            const predictions = await model.classify(preview);
+            console.log(predictions);
+
+            // Check if top prediction contains 'plant' or 'leaf'
+            const isPlant = predictions.some(pred => 
+                pred.className.toLowerCase().includes("plant") || 
+                pred.className.toLowerCase().includes("leaf")
+            );
+
+            if (isPlant) {
+                // Mock disease detection (replace with your model)
+                result.innerText = "Plant detected! Disease: Leaf Spot (example)";
+            } else {
+                result.innerText = "Error: Please upload only plant or leaf images.";
+            }
+        };
     };
 
-    function detectDisease() {
-
-        const diseases = [
-            "Tomato Early Blight",
-            "Tomato Late Blight",
-            "Tomato Leaf Mold",
-            "Tomato Septoria Leaf Spot",
-            "Tomato Bacterial Spot",
-            "Tomato Mosaic Virus",
-            "Tomato Yellow Leaf Curl Virus",
-
-            "Potato Early Blight",
-            "Potato Late Blight",
-            "Potato Common Scab",
-            "Potato Black Scurf",
-
-            "Apple Scab",
-            "Apple Black Rot",
-            "Apple Cedar Rust",
-
-            "Grape Black Rot",
-            "Grape Esca (Black Measles)",
-            "Grape Leaf Blight",
-
-            "Corn Gray Leaf Spot",
-            "Corn Common Rust",
-            "Corn Northern Leaf Blight",
-
-            "Wheat Rust",
-            "Wheat Loose Smut",
-            "Wheat Powdery Mildew",
-
-            "Rice Blast",
-            "Rice Brown Spot",
-            "Rice Bacterial Leaf Blight",
-
-            "Cotton Leaf Curl Virus",
-            "Cotton Bacterial Blight",
-            "Cotton Root Rot",
-
-            "Soybean Rust",
-            "Soybean Bacterial Blight",
-            "Soybean Mosaic Virus",
-
-            "Pepper Bacterial Spot",
-            "Pepper Leaf Curl Virus",
-            "Pepper Anthracnose",
-
-            "Cucumber Downy Mildew",
-            "Cucumber Powdery Mildew",
-            "Cucumber Angular Leaf Spot",
-
-            "Banana Panama Disease",
-            "Banana Black Sigatoka",
-            "Banana Bunchy Top Virus",
-
-            "Mango Anthracnose",
-            "Mango Powdery Mildew",
-            "Mango Bacterial Canker",
-
-            "Leaf Spot",
-            "Powdery Mildew",
-            "Downy Mildew",
-            "Rust Disease",
-            "Anthracnose",
-            "Fusarium Wilt",
-            "Verticillium Wilt",
-
-            "Healthy Leaf"
-        ];
-
-        const randomDisease = diseases[Math.floor(Math.random() * diseases.length)];
-
-        document.getElementById("result").innerHTML =
-            "🌱 Detected Disease: " + randomDisease;
-    }
+    reader.readAsDataURL(file);
+}
 </script>
 
 </body>
 </html>
-if confidence < 0.6:
-    return "❌ Sorry, the uploaded image is not recognized as a plant leaf. Please upload a clear plant image.", None
-
-
-
